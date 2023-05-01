@@ -49,9 +49,9 @@ bool readSwitch(byte channelInput, bool defaultValue) {
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   ibus.begin(Serial1);
-  Serial.println("Starting");  
+  Serial.println("Starting...");  
   vr_L.begin(99);
   vr_R.begin(99);
 
@@ -69,11 +69,16 @@ void setup() {
   //digitalWrite(gearGND,HIGH);
   //digitalWrite(gearSW,HIGH);
 
+  /*
   audio.speakerPin = 46; // Set the output pin for audio
   SD.begin(53);          // Initialize the SD card on SPI bus
   audio.setVolume(5);   // Set the volume to a value between 0 and 7
-  
-  wavPlay("greeting.wav",true);
+  if (!SD.begin(53)) {  // see if the card is present and can be initialized:
+    Serial.println("SD fail");  
+    return;   // don't do anything more if not
+  }
+  //wavPlay("greeting.wav",true);
+  */
 }
 
 bool startOrder(){
@@ -90,27 +95,37 @@ bool startOrder(){
 
 void wavPlay(char* wavfile, bool wait){
   audio.play(wavfile); // Play the audio file from the SD card
-  while (audio.isPlaying() && wait);// Wait for the audio to finish playing
+  int playing = 0;
+  while (audio.isPlaying() && wait){
+    playing=playing+1;
+    //Serial.println("playing.....");
+  };// Wait for the audio to finish playing
+  Serial.println(playing);
 }
 
 void loop() {
-  
   /*
+  if(!greetingPlaied){
+    Serial.println("play");
+    wavPlay("1.wav",true);
+    greetingPlaied=true;
+  }*/
+  
   bool startEngine=true;
   if(!startMotorControllerBox){
     if(!readSwitch(5, false) && !readSwitch(6, false)){  //vrB ถ้าไม่เปิดใบตัดไว้(flase) หรือ swA ถ้าไม่ปิดฉุกเฉิน(flase)ไว้
       if(startOrder()){
         startEngine=false;  
-        wavPlay("3.wav",false);
+        //wavPlay("3.wav",false);
         Serial.println("3");
         if(startOrder()){
-          wavPlay("2.wav",false);
+          //wavPlay("2.wav",false);
           Serial.println("2");
           if(startOrder()){
-            wavPlay("1.wav",false);
+            //wavPlay("1.wav",false);
             Serial.println("1");
             Serial.println("Wait for start 5 sec");
-            wavPlay("carready.wav",true); //รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง
+            //wavPlay("carready.wav",true); //รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง
             Serial.println("Ready....");
             startMotorControllerBox=true; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
             startEngine=true;
@@ -120,11 +135,11 @@ void loop() {
       }
       if(!startEngine){
         Serial.println("Starting Cancelled");
-        wavPlay("cancelstarting.wav",true);
+        //wavPlay("cancelstarting.wav",true);
       }
     }else{
       Serial.println("Blade still ON or Emergency Sw OFF, don't start.");
-      wavPlay("bladeondontstart.wav",true);
+      //wavPlay("bladeondontstart.wav",true);
     }
   }else{
     if(readSwitch(6,false)){
@@ -133,24 +148,24 @@ void loop() {
       //digitalWrite(keyStartPIN,HIGH);
       startEngine=false;
       Serial.println("Emergency Engine Stoped");
-      wavPlay("stopengine.wav",true);
+      //wavPlay("stopengine.wav",true);
 
       digitalWrite(startBladePIN,HIGH);
       bladeStatusON = false;
       Serial.println("Emergency Blade Stoped");
-      wavPlay("stopblade.wav",true);
+      //wavPlay("stopblade.wav",true);
     }
 
     if(readSwitch(5, false) && !bladeStatusON && !readSwitch(6,false)){  //เปิดสวิทช์ และใบตัดไม่ได้ทำงานอยู่ และ swA ต้อง true ด้วย
       digitalWrite(startBladePIN,LOW);
       Serial.println("bladeStared");
       bladeStatusON = true;
-      wavPlay("bladestarting.wav",false); //ใบตัดกำลังเริ่มทำงานใน 
+      //wavPlay("bladestarting.wav",false); //ใบตัดกำลังเริ่มทำงานใน 
     }else if(!readSwitch(5, false) && bladeStatusON){  //ปิดสวิทช์ และใบตัดทำงานอยู่
       digitalWrite(startBladePIN,HIGH);
       Serial.println("bladeStoped");
       bladeStatusON = false;
-      wavPlay("bladestop.wav",false); //ใบตัดหยุดทำงาน 
+      //wavPlay("bladestop.wav",false); //ใบตัดหยุดทำงาน 
     }
         
 
@@ -186,5 +201,5 @@ void loop() {
     vr_R.set(r_R_Value);
     
     delay(100);
-  }*/
+  }
 }
