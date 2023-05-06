@@ -5,14 +5,15 @@
 IBusBM ibus;
 TMRpcm audio;           // Create an object of TMRpcm class
 
-#define CSPIN_L 2
-#define INCPIN_L 3
-#define UDPIN_L 4
+#define CSPIN_L 34 //2
+#define INCPIN_L 32 //3
+#define UDPIN_L 30 //4
 #define rev_L 5
 
-#define UDPIN_R 8
-#define INCPIN_R 9
-#define CSPIN_R 10
+
+#define CSPIN_R 44 //10
+#define INCPIN_R 42 //9
+#define UDPIN_R 40 //8
 #define rev_R 6
 /*
 #define gearGND 50
@@ -30,7 +31,7 @@ uint8_t r_R_Value;
 bool startMotorControllerBox=false; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
 int str0,str1,str2,str3;
 bool bladeStatusON=false;
-bool greetingPlaied=false; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
+bool greetingPlaied=false; 
 
 
 LapX9C10X vr_L(INCPIN_L, UDPIN_L, CSPIN_L, LAPX9C10X_X9C103);
@@ -69,16 +70,14 @@ void setup() {
   //digitalWrite(gearGND,HIGH);
   //digitalWrite(gearSW,HIGH);
 
-  /*
-  audio.speakerPin = 46; // Set the output pin for audio
-  SD.begin(53);          // Initialize the SD card on SPI bus
-  audio.setVolume(5);   // Set the volume to a value between 0 and 7
+  
+  audio.speakerPin = 46; // Set the output pin for audio  สำหรับ mega ต้องขา 46 จึงจะมีเสียง
+  audio.setVolume(5);   // Set the volume to a value between 0 and 7  ต้องกำหนดที่ 5 เท่านั้นจึงจะมีเสียงอาจจะเป็นที่สเปคลำโพง
   if (!SD.begin(53)) {  // see if the card is present and can be initialized:
     Serial.println("SD fail");  
     return;   // don't do anything more if not
   }
-  //wavPlay("greeting.wav",true);
-  */
+  wavPlay("greeting.wav",true);
 }
 
 bool startOrder(){
@@ -95,21 +94,21 @@ bool startOrder(){
 
 void wavPlay(char* wavfile, bool wait){
   audio.play(wavfile); // Play the audio file from the SD card
-  int playing = 0;
+
+  int playTime=0;
   while (audio.isPlaying() && wait){
-    playing=playing+1;
-    //Serial.println("playing.....");
+    if(playTime==0){
+      Serial.print("playing..");
+      delay(250);
+    }
+    playTime=playTime+1;
+    Serial.print(".");
+    delay(250);
   };// Wait for the audio to finish playing
-  Serial.println(playing);
+  Serial.println(" ");
 }
 
 void loop() {
-  /*
-  if(!greetingPlaied){
-    Serial.println("play");
-    wavPlay("1.wav",true);
-    greetingPlaied=true;
-  }*/
   
   bool startEngine=true;
   if(!startMotorControllerBox){
