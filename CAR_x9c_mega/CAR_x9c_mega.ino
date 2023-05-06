@@ -105,7 +105,7 @@ void wavPlay(char* wavfile, bool wait){
     Serial.print(".");
     delay(250);
   };// Wait for the audio to finish playing
-  Serial.println(" ");
+  if(wait) Serial.println(" ");
 }
 
 void loop() {
@@ -115,56 +115,78 @@ void loop() {
     if(!readSwitch(5, false) && !readSwitch(6, false)){  //vrB ถ้าไม่เปิดใบตัดไว้(flase) หรือ swA ถ้าไม่ปิดฉุกเฉิน(flase)ไว้
       if(startOrder()){
         startEngine=false;  
-        //wavPlay("3.wav",false);
+        wavPlay("3.wav",false);
         Serial.println("3");
+        delay(1000);
         if(startOrder()){
-          //wavPlay("2.wav",false);
+          wavPlay("2.wav",false);
           Serial.println("2");
+          delay(1000);
           if(startOrder()){
-            //wavPlay("1.wav",false);
+            wavPlay("1.wav",false);
             Serial.println("1");
+            delay(1000);
             Serial.println("Wait for start 5 sec");
-            //wavPlay("carready.wav",true); //รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง
+            wavPlay("carready.wav",true); //รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง
             Serial.println("Ready....");
             startMotorControllerBox=true; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
-            startEngine=true;
+            startEngine=true;  //สถานะพร้อมรับคำสั่ง อันตรายถ้าอยู่ใกล้
             //digitalWrite(keyStartPIN,LOW);
           }
         }
       }
       if(!startEngine){
         Serial.println("Starting Cancelled");
-        //wavPlay("cancelstarting.wav",true);
+        wavPlay("ccelst.wav",true);
       }
     }else{
-      Serial.println("Blade still ON or Emergency Sw OFF, don't start.");
-      //wavPlay("bladeondontstart.wav",true);
+      Serial.println("Blade Sw ON or Emergency Sw ON, don't start.");
+
+      if(readSwitch(5, false)) wavPlay("blondstr.wav",true);
+      if(readSwitch(6, false)) wavPlay("enofdstr.wav",true);
+
     }
   }else{
-    if(readSwitch(6,false)){
-      //Serial.println("sw7 is true");
+    // หยุดเครื่องฉุกเฉินจะต้อง upgrade เป็นเคส interup ภายหลัง
+    if(readSwitch(6,false)){ //ถ้าสถานะ sw7 เป็น true 
       startMotorControllerBox=false; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
       //digitalWrite(keyStartPIN,HIGH);
-      startEngine=false;
-      Serial.println("Emergency Engine Stoped");
-      //wavPlay("stopengine.wav",true);
-
       digitalWrite(startBladePIN,HIGH);
+
+      startEngine=false;  //สถานะเครื่องหยุดทำงาน 
       bladeStatusON = false;
+
+      Serial.println("Emergency Engine Stoped");
+      wavPlay("stpeng.wav",true);
       Serial.println("Emergency Blade Stoped");
-      //wavPlay("stopblade.wav",true);
+      wavPlay("stpbld.wav",true);
+      while(readSwitch(6,false)){
+        Serial.print("z");
+        delay(1000);
+      }
+      exit;
     }
 
     if(readSwitch(5, false) && !bladeStatusON && !readSwitch(6,false)){  //เปิดสวิทช์ และใบตัดไม่ได้ทำงานอยู่ และ swA ต้อง true ด้วย
+      wavPlay("blstrt.wav",true); //ใบตัดกำลังเริ่มทำงานใน 
+      wavPlay("3.wav",false);
+      Serial.println("3");
+      delay(1000);
+      wavPlay("2.wav",false);
+      Serial.println("2");
+      delay(1000);
+      wavPlay("1.wav",false);
+      Serial.println("1");
+      delay(1000);
+      
       digitalWrite(startBladePIN,LOW);
       Serial.println("bladeStared");
       bladeStatusON = true;
-      //wavPlay("bladestarting.wav",false); //ใบตัดกำลังเริ่มทำงานใน 
     }else if(!readSwitch(5, false) && bladeStatusON){  //ปิดสวิทช์ และใบตัดทำงานอยู่
       digitalWrite(startBladePIN,HIGH);
       Serial.println("bladeStoped");
       bladeStatusON = false;
-      //wavPlay("bladestop.wav",false); //ใบตัดหยุดทำงาน 
+      wavPlay("bldstop.wav",false); //ใบตัดหยุดทำงาน 
     }
         
 
