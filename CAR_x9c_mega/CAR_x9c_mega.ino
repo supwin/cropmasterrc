@@ -5,15 +5,15 @@
 IBusBM ibus;
 TMRpcm audio;           // Create an object of TMRpcm class
 
-#define CSPIN_L 34 //2
-#define INCPIN_L 32 //3
-#define UDPIN_L 30 //4
+#define CSPIN_L 32 //2
+#define INCPIN_L 30 //3
+#define UDPIN_L 28 //4
 #define rev_L 5
 
 
-#define CSPIN_R 44 //10
-#define INCPIN_R 42 //9
-#define UDPIN_R 40 //8
+#define CSPIN_R 42 //10
+#define INCPIN_R 40 //9
+#define UDPIN_R 38 //8
 #define rev_R 6
 /*
 #define gearGND 50
@@ -32,6 +32,7 @@ bool startMotorControllerBox=false; //เก็บไว้ยังไม่ไ
 int str0,str1,str2,str3;
 bool bladeStatusON=false;
 bool greetingPlaied=false; 
+bool startEngine=true;
 
 
 LapX9C10X vr_L(INCPIN_L, UDPIN_L, CSPIN_L, LAPX9C10X_X9C103);
@@ -108,9 +109,45 @@ void wavPlay(char* wavfile, bool wait){
   if(wait) Serial.println(" ");
 }
 
-void loop() {
-  
-  bool startEngine=true;
+void emergencyStop(){
+  startMotorControllerBox=false; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
+  //digitalWrite(keyStartPIN,HIGH);
+  digitalWrite(startBladePIN,HIGH);
+
+  startEngine=false;  //สถานะเครื่องหยุดทำงาน 
+  bladeStatusON = false;
+
+  Serial.println("Emergency Engine Stoped");
+  wavPlay("stpeng.wav",true);
+  Serial.println("Emergency Blade Stoped");
+  wavPlay("stpbld.wav",true);
+  int zTime = 0;
+  while(readSwitch(6,false)){
+    zTime++;
+    if(zTime>=9){
+      switch(zTime){
+        case 9:
+          Serial.print("z");
+          break;
+        case 10:
+          zTime=0;
+          Serial.println("Z");
+          break;
+      }
+    }else{
+      Serial.print("z");
+    }
+    delay(1000);
+  }
+}
+
+void cancelBladStart(){
+    wavPlay("ccblstat.wav",true);
+    Serial.print("cancel blad starting");
+  }
+
+void loop(){
+  startEngine=true;
   if(!startMotorControllerBox){
     if(!readSwitch(5, false) && !readSwitch(6, false)){  //vrB ถ้าไม่เปิดใบตัดไว้(flase) หรือ swA ถ้าไม่ปิดฉุกเฉิน(flase)ไว้
       if(startOrder()){
@@ -140,31 +177,17 @@ void loop() {
         wavPlay("ccelst.wav",true);
       }
     }else{
-      Serial.println("Blade Sw ON or Emergency Sw ON, don't start.");
+      Serial.println("Blade Sw ON or Emergency Sw ON, don't start.");  // ห้ามสต๊าสเพราะสวิทช์ใบตัดเปิดค้างไว้ หรือปุ่มหยุดฉุกเฉินยังถูกปิดไม่ให้สต๊าสเครื่องได้อยู่
 
-      if(readSwitch(5, false)) wavPlay("blondstr.wav",true);
-      if(readSwitch(6, false)) wavPlay("enofdstr.wav",true);
+      if(readSwitch(5, false)) wavPlay("enofdstr.wav",true);
+      if(readSwitch(6, false)) wavPlay("blondstr.wav",true);
 
     }
   }else{
     // หยุดเครื่องฉุกเฉินจะต้อง upgrade เป็นเคส interup ภายหลัง
     if(readSwitch(6,false)){ //ถ้าสถานะ sw7 เป็น true 
-      startMotorControllerBox=false; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
-      //digitalWrite(keyStartPIN,HIGH);
-      digitalWrite(startBladePIN,HIGH);
-
-      startEngine=false;  //สถานะเครื่องหยุดทำงาน 
-      bladeStatusON = false;
-
-      Serial.println("Emergency Engine Stoped");
-      wavPlay("stpeng.wav",true);
-      Serial.println("Emergency Blade Stoped");
-      wavPlay("stpbld.wav",true);
-      while(readSwitch(6,false)){
-        Serial.print("z");
-        delay(1000);
-      }
-      exit;
+      emergencyStop();
+      return;
     }
 
     if(readSwitch(5, false) && !bladeStatusON && !readSwitch(6,false)){  //เปิดสวิทช์ และใบตัดไม่ได้ทำงานอยู่ และ swA ต้อง true ด้วย
@@ -172,12 +195,33 @@ void loop() {
       wavPlay("3.wav",false);
       Serial.println("3");
       delay(1000);
-      wavPlay("2.wav",false);
-      Serial.println("2");
-      delay(1000);
-      wavPlay("1.wav",false);
-      Serial.println("1");
-      delay(1000);
+      if(!readSwitch(6, false)){
+        if(readSwitch(5,false)){
+          wavPlay("2.wav",false);
+          Serial.println("2");
+          delay(1000);
+        }else{
+          cancelBladStart();
+          return;
+        }
+      }else{
+        emergencyStop();
+        return;
+      }
+      
+      if(!readSwitch(6, false)){
+        if(readSwitch(5,false)){
+          wavPlay("1.wav",false);
+          Serial.println("1");
+          delay(1000);
+        }else{
+          cancelBladStart();
+          return;
+        }
+      }else{
+        emergencyStop();
+        return;
+      }
       
       digitalWrite(startBladePIN,LOW);
       Serial.println("bladeStared");
