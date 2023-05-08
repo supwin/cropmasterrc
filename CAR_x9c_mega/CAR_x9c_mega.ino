@@ -79,14 +79,14 @@ void setup() {
     return;   // don't do anything more if not
   }
   wavPlay("greeting.wav",true,"Crop Master RC รถบังคับเพื่องานการเกษตร สวัสดีครับ");
-  readSubVersion("1231");
+  readSubVersion("0p010000");
 }
 
 void readSubVersion(txt){
-  wavPlay("readSub.wav",true,"เลขซับเวอร์ชั่น")
+  wavPlay("alfaversion.wav",true,"อัลฟ่าเวอร์ชั่น")
   for(int i = 0; i < txt.length(); i++) {
     char txtchar = txt.charAt(i);
-    wavPlay(txtchar,true,txtchar);
+    wavPlay(String(txtchar)+".wav",true,txtchar);
   }
 }
 
