@@ -82,11 +82,12 @@ void setup() {
   readSubVersion("0p010000");
 }
 
-void readSubVersion(txt){
-  wavPlay("alfaversion.wav",true,"อัลฟ่าเวอร์ชั่น")
-  for(int i = 0; i < txt.length(); i++) {
-    char txtchar = txt.charAt(i);
-    wavPlay(String(txtchar)+".wav",true,txtchar);
+void readSubVersion(char* txt){
+  wavPlay("alfavrsn.wav",true,"อัลฟ่าเวอร์ชั่น");
+  for(int i = 0; i < strlen(txt); i++) {
+    char txtchar = txt[i];
+    String filename = String(txtchar) + ".wav";
+    wavPlay(filename.c_str(), true, &txtchar);
   }
 }
 
@@ -167,8 +168,8 @@ void loop(){
         wavPlay("ccelst.wav",true,"ยกเลิกการสต๊าส");
       }
     }else{
-      if(readSwitch(5, false)) wavPlay("enofdstr.wav",true,"สวิทช์เครื่องปิดอยู่ ไม่สามารถสต๊าสได้");
-      if(readSwitch(6, false)) wavPlay("blondstr.wav",true,"สวิทช์ใบตัดเปิดค้างอยู่ ห้ามสต๊าส");
+      if(readSwitch(5, false)) wavPlay("blondstr.wav",true,"สวิทช์ใบตัดเปิดค้างอยู่ ห้ามสต๊าส");
+      if(readSwitch(6, false)) wavPlay("enofdstr.wav",true,"สวิทช์เครื่องปิดอยู่ ไม่สามารถสต๊าสได้");
     }
   }else{
     // หยุดเครื่องฉุกเฉินจะต้อง upgrade เป็นเคส interup ภายหลัง
@@ -219,34 +220,34 @@ void loop(){
         
 
     ch_L_Value = readChannel(0, -60, 60, 0);
-    Serial.print("L = "); Serial.println(ch_L_Value);
 
     ch_R_Value = readChannel(1, -60, 60, 0);
-    Serial.print("R = "); Serial.println(ch_R_Value);
 
     
     if(ch_L_Value<0){
-      r_L_Value = (ch_L_Value*2)-60;      
+      r_L_Value = 60+ch_L_Value;    
       digitalWrite(rev_L,LOW);
-      Serial.println("L Backward");
+      Serial.print("L Backward ");
     }else{
-      r_L_Value = ch_L_Value-60;
+      r_L_Value = 60-ch_L_Value;
       digitalWrite(rev_L,HIGH);
-      Serial.println("L Forward");
+      Serial.print("L Forward ");  
     }
+    Serial.print("remote = "); Serial.print(ch_L_Value); Serial.print(" >> resistance = "); Serial.println(r_L_Value);
     vr_L.set(r_L_Value);
     
     if(ch_R_Value<0){
-      r_R_Value = (ch_R_Value*2)-60;
+      r_R_Value = 60+ch_R_Value;  
       digitalWrite(rev_R,LOW);
-      Serial.println("R Backward");
+      Serial.print("R Backward ");
     }else{
-      r_R_Value = ch_R_Value-60;
+      r_R_Value = 60-ch_R_Value;
       digitalWrite(rev_R,HIGH);
-      Serial.println("R Forward");
+      Serial.print("R Forward ");
     }
+    Serial.print("remote = "); Serial.print(ch_R_Value); Serial.print(" >> resistance = "); Serial.println(r_R_Value);
     vr_R.set(r_R_Value);
     
-    delay(100);
+    delay(250);
   }
 }
