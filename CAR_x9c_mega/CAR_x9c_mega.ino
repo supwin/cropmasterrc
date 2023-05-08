@@ -78,7 +78,16 @@ void setup() {
     Serial.println("SD fail");  
     return;   // don't do anything more if not
   }
-  wavPlay("greeting.wav",true);
+  wavPlay("greeting.wav",true,"Crop Master RC รถบังคับเพื่องานการเกษตร สวัสดีครับ");
+  readSubVersion("1231");
+}
+
+void readSubVersion(txt){
+  wavPlay("readSub.wav",true,"เลขซับเวอร์ชั่น")
+  for(int i = 0; i < txt.length(); i++) {
+    char txtchar = txt.charAt(i);
+    wavPlay(txtchar,true,txtchar);
+  }
 }
 
 bool startOrder(){
@@ -93,20 +102,15 @@ bool startOrder(){
     }
 }
 
-void wavPlay(char* wavfile, bool wait){
+void wavPlay(char* wavfile, bool wait, char* txt){
   audio.play(wavfile); // Play the audio file from the SD card
 
-  int playTime=0;
+  Serial.print(txt);
   while (audio.isPlaying() && wait){
-    if(playTime==0){
-      Serial.print("playing..");
-      delay(250);
-    }
-    playTime=playTime+1;
     Serial.print(".");
     delay(250);
   };// Wait for the audio to finish playing
-  if(wait) Serial.println(" ");
+  Serial.println(".");
 }
 
 void emergencyStop(){
@@ -117,23 +121,14 @@ void emergencyStop(){
   startEngine=false;  //สถานะเครื่องหยุดทำงาน 
   bladeStatusON = false;
 
-  Serial.println("Emergency Engine Stoped");
-  wavPlay("stpeng.wav",true);
-  Serial.println("Emergency Blade Stoped");
-  wavPlay("stpbld.wav",true);
+  wavPlay("stpeng.wav",true,"ดับเครื่อง");
+  wavPlay("stpbld.wav",true,"หยุดใบตัด");
   int zTime = 0;
   while(readSwitch(6,false)){
     zTime++;
-    if(zTime>=9){
-      switch(zTime){
-        case 9:
-          Serial.print("z");
-          break;
-        case 10:
-          zTime=0;
-          Serial.println("Z");
-          break;
-      }
+    if(zTime>9){
+      zTime=0;
+      Serial.println("Z");
     }else{
       Serial.print("z");
     }
@@ -142,9 +137,9 @@ void emergencyStop(){
 }
 
 void cancelBladStart(){
-    wavPlay("ccblstat.wav",true);
-    Serial.print("cancel blad starting");
-  }
+    wavPlay("ccblstat.wav",true,"ยกเลิก ใบตัด");
+}
+
 
 void loop(){
   startEngine=true;
@@ -152,19 +147,15 @@ void loop(){
     if(!readSwitch(5, false) && !readSwitch(6, false)){  //vrB ถ้าไม่เปิดใบตัดไว้(flase) หรือ swA ถ้าไม่ปิดฉุกเฉิน(flase)ไว้
       if(startOrder()){
         startEngine=false;  
-        wavPlay("3.wav",false);
-        Serial.println("3");
+        wavPlay("3.wav",false,"3");
         delay(1000);
         if(startOrder()){
-          wavPlay("2.wav",false);
-          Serial.println("2");
+          wavPlay("2.wav",false,"2");
           delay(1000);
           if(startOrder()){
-            wavPlay("1.wav",false);
-            Serial.println("1");
+            wavPlay("1.wav",false,"1");
             delay(1000);
-            Serial.println("Wait for start 5 sec");
-            wavPlay("carready.wav",true); //รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง
+            wavPlay("carready.wav",true,"รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง"); //รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง
             Serial.println("Ready....");
             startMotorControllerBox=true; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
             startEngine=true;  //สถานะพร้อมรับคำสั่ง อันตรายถ้าอยู่ใกล้
@@ -173,54 +164,47 @@ void loop(){
         }
       }
       if(!startEngine){
-        Serial.println("Starting Cancelled");
-        wavPlay("ccelst.wav",true);
+        wavPlay("ccelst.wav",true,"ยกเลิกการสต๊าส");
       }
     }else{
-      Serial.println("Blade Sw ON or Emergency Sw ON, don't start.");  // ห้ามสต๊าสเพราะสวิทช์ใบตัดเปิดค้างไว้ หรือปุ่มหยุดฉุกเฉินยังถูกปิดไม่ให้สต๊าสเครื่องได้อยู่
-
-      if(readSwitch(5, false)) wavPlay("enofdstr.wav",true);
-      if(readSwitch(6, false)) wavPlay("blondstr.wav",true);
-
+      if(readSwitch(5, false)) wavPlay("enofdstr.wav",true,"สวิทช์เครื่องปิดอยู่ ไม่สามารถสต๊าสได้");
+      if(readSwitch(6, false)) wavPlay("blondstr.wav",true,"สวิทช์ใบตัดเปิดค้างอยู่ ห้ามสต๊าส");
     }
   }else{
     // หยุดเครื่องฉุกเฉินจะต้อง upgrade เป็นเคส interup ภายหลัง
     if(readSwitch(6,false)){ //ถ้าสถานะ sw7 เป็น true 
       emergencyStop();
-      return;
+      return;  // ออกไปเริ่ม loop ใหม่ ไม่ทำคำสั่งที่เหลือต่อไป
     }
 
     if(readSwitch(5, false) && !bladeStatusON && !readSwitch(6,false)){  //เปิดสวิทช์ และใบตัดไม่ได้ทำงานอยู่ และ swA ต้อง true ด้วย
-      wavPlay("blstrt.wav",true); //ใบตัดกำลังเริ่มทำงานใน 
-      wavPlay("3.wav",false);
-      Serial.println("3");
+      wavPlay("blstrt.wav",true,"ใบตัดกำลังเริ่มทำงานใน"); 
+      wavPlay("3.wav",false,"3");
       delay(1000);
       if(!readSwitch(6, false)){
         if(readSwitch(5,false)){
-          wavPlay("2.wav",false);
-          Serial.println("2");
+          wavPlay("2.wav",false,"2");
           delay(1000);
         }else{
           cancelBladStart();
-          return;
+          return; // ออกไปเริ่ม loop ใหม่ ไม่ทำคำสั่งที่เหลือต่อไป
         }
       }else{
         emergencyStop();
-        return;
+        return; // ออกไปเริ่ม loop ใหม่ ไม่ทำคำสั่งที่เหลือต่อไป
       }
       
       if(!readSwitch(6, false)){
         if(readSwitch(5,false)){
-          wavPlay("1.wav",false);
-          Serial.println("1");
+          wavPlay("1.wav",false,"1");
           delay(1000);
         }else{
           cancelBladStart();
-          return;
+          return; // ออกไปเริ่ม loop ใหม่ ไม่ทำคำสั่งที่เหลือต่อไป
         }
       }else{
         emergencyStop();
-        return;
+        return; // ออกไปเริ่ม loop ใหม่ ไม่ทำคำสั่งที่เหลือต่อไป
       }
       
       digitalWrite(startBladePIN,LOW);
@@ -230,7 +214,7 @@ void loop(){
       digitalWrite(startBladePIN,HIGH);
       Serial.println("bladeStoped");
       bladeStatusON = false;
-      wavPlay("bldstop.wav",false); //ใบตัดหยุดทำงาน 
+      wavPlay("bldstop.wav",false,"ใบตัดหยุดทำงาน"); //ใบตัดหยุดทำงาน 
     }
         
 
@@ -242,27 +226,25 @@ void loop(){
 
     
     if(ch_L_Value<0){
-      r_L_Value = 60+ch_L_Value;      
+      r_L_Value = (ch_L_Value*2)-60;      
       digitalWrite(rev_L,LOW);
       Serial.println("L Backward");
     }else{
-      r_L_Value = 60-ch_L_Value;
+      r_L_Value = ch_L_Value-60;
       digitalWrite(rev_L,HIGH);
       Serial.println("L Forward");
     }
-
     vr_L.set(r_L_Value);
     
     if(ch_R_Value<0){
-      r_R_Value = 60+ch_R_Value;
+      r_R_Value = (ch_R_Value*2)-60;
       digitalWrite(rev_R,LOW);
       Serial.println("R Backward");
     }else{
-      r_R_Value = 60-ch_R_Value;
+      r_R_Value = ch_R_Value-60;
       digitalWrite(rev_R,HIGH);
       Serial.println("R Forward");
     }
-
     vr_R.set(r_R_Value);
     
     delay(100);
