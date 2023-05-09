@@ -67,12 +67,12 @@ void setup() {
   
   audio.speakerPin = 46; // Set the output pin for audio  สำหรับ mega ต้องขา 46 จึงจะมีเสียง
   audio.setVolume(5);   // Set the volume to a value between 0 and 7  ต้องกำหนดที่ 5 เท่านั้นจึงจะมีเสียงอาจจะเป็นที่สเปคลำโพง
-  // if (!SD.begin(53)) {  // see if the card is present and can be initialized:
-  //   Serial.println("SD fail");  
-  //   return;   // don't do anything more if not
-  // }
+  if (!SD.begin(53)) {  // see if the card is present and can be initialized:
+    Serial.println("SD fail");  
+    return;   // don't do anything more if not
+  }
   wavPlay("greeting.wav",true,"Crop Master RC รถบังคับเพื่องานการเกษตร สวัสดีครับ");
-  readSubVersion("0p020000");
+  readSubVersion("0p020000p1");
 }
 
 void readSubVersion(char* txt){
