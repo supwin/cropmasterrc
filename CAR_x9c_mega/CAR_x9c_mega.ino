@@ -1,20 +1,13 @@
 #include <SD.h>         // Include the SD library
 #include <TMRpcm.h>     // Include the TMRpcm library
-#include <LapX9C10X.h>
 #include <IBusBM.h>   
 IBusBM ibus;
 TMRpcm audio;           // Create an object of TMRpcm class
 
-#define CSPIN_L 32 //2
-#define INCPIN_L 30 //3
-#define UDPIN_L 28 //4
 #define rev_L 5
-
-
-#define CSPIN_R 42 //10
-#define INCPIN_R 40 //9
-#define UDPIN_R 38 //8
 #define rev_R 6
+#define pin_L 3
+#define pin_R 9
 /*
 #define gearGND 50
 #define gearSW 52
@@ -34,10 +27,6 @@ bool bladeStatusON=false;
 bool greetingPlaied=false; 
 bool startEngine=true;
 
-
-LapX9C10X vr_L(INCPIN_L, UDPIN_L, CSPIN_L, LAPX9C10X_X9C103);
-LapX9C10X vr_R(INCPIN_R, UDPIN_R, CSPIN_R, LAPX9C10X_X9C103);
-
 int readChannel(byte channelInput, int minLimit, int maxLimit, int defaultValue) {
   uint16_t ch = ibus.readChannel(channelInput);
   if (ch < 100) return defaultValue;
@@ -54,11 +43,11 @@ void setup() {
   Serial.begin(9600);
   ibus.begin(Serial1);
   Serial.println("Starting...");  
-  vr_L.begin(99);
-  vr_R.begin(99);
 
   pinMode(rev_L, OUTPUT);
   pinMode(rev_R, OUTPUT);
+  pinMode(pin_L, OUTPUT);
+  pinMode(pin_R, OUTPUT);
   //pinMode(keyStartPIN,OUTPUT);
   pinMode(startBladePIN,OUTPUT);
   //pinMode(gearGND,OUTPUT);
@@ -66,6 +55,10 @@ void setup() {
 
   digitalWrite(rev_L,HIGH);
   digitalWrite(rev_R,HIGH);
+  digitalWrite(pin_L,HIGH);
+  digitalWrite(pin_R,HIGH);
+  analogWrite(pin_L,75);
+  analogWrite(pin_R,75);
   //digitalWrite(keyStartPIN,HIGH);
   digitalWrite(startBladePIN,HIGH);
   //digitalWrite(gearGND,HIGH);
@@ -74,12 +67,12 @@ void setup() {
   
   audio.speakerPin = 46; // Set the output pin for audio  สำหรับ mega ต้องขา 46 จึงจะมีเสียง
   audio.setVolume(5);   // Set the volume to a value between 0 and 7  ต้องกำหนดที่ 5 เท่านั้นจึงจะมีเสียงอาจจะเป็นที่สเปคลำโพง
-  if (!SD.begin(53)) {  // see if the card is present and can be initialized:
-    Serial.println("SD fail");  
-    return;   // don't do anything more if not
-  }
+  // if (!SD.begin(53)) {  // see if the card is present and can be initialized:
+  //   Serial.println("SD fail");  
+  //   return;   // don't do anything more if not
+  // }
   wavPlay("greeting.wav",true,"Crop Master RC รถบังคับเพื่องานการเกษตร สวัสดีครับ");
-  readSubVersion("0p010000");
+  readSubVersion("0p020000");
 }
 
 void readSubVersion(char* txt){
@@ -156,7 +149,7 @@ void loop(){
           if(startOrder()){
             wavPlay("1.wav",false,"1");
             delay(1000);
-            wavPlay("carready.wav",true,"รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง"); //รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง
+            wavPlay("carready.wav",true,"รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง");
             Serial.println("Ready....");
             startMotorControllerBox=true; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
             startEngine=true;  //สถานะพร้อมรับคำสั่ง อันตรายถ้าอยู่ใกล้
@@ -220,33 +213,30 @@ void loop(){
         
 
     ch_L_Value = readChannel(0, -60, 60, 0);
-
     ch_R_Value = readChannel(1, -60, 60, 0);
 
     
     if(ch_L_Value<0){
-      r_L_Value = 60+ch_L_Value;    
+      ch_L_Value = ch_L_Value*(-1);    
       digitalWrite(rev_L,LOW);
-      Serial.print("L Backward ");
+      Serial.print("L Backward "); 
     }else{
-      r_L_Value = 60-ch_L_Value;
       digitalWrite(rev_L,HIGH);
       Serial.print("L Forward ");  
     }
-    Serial.print("remote = "); Serial.print(ch_L_Value); Serial.print(" >> resistance = "); Serial.println(r_L_Value);
-    vr_L.set(r_L_Value);
+    Serial.println(ch_L_Value);
+    analogWrite(pin_L,map(ch_L_Value,0,60,75,130));
     
     if(ch_R_Value<0){
-      r_R_Value = 60+ch_R_Value;  
+      ch_R_Value = ch_R_Value*(-1);  
       digitalWrite(rev_R,LOW);
       Serial.print("R Backward ");
     }else{
-      r_R_Value = 60-ch_R_Value;
       digitalWrite(rev_R,HIGH);
       Serial.print("R Forward ");
     }
-    Serial.print("remote = "); Serial.print(ch_R_Value); Serial.print(" >> resistance = "); Serial.println(r_R_Value);
-    vr_R.set(r_R_Value);
+    Serial.println(ch_R_Value);
+    analogWrite(pin_R,map(ch_R_Value,0,60,75,130));
     
     delay(250);
   }
