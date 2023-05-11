@@ -3,48 +3,42 @@
 #include <IBusBM.h>   
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
+//#include <PWM.h>
+
+int slowest=55;
+int fastest=100;
+int ch_1;
+int ch_2;
+int str0,str1,str2,str3;
+bool bladeStatusON=false;
+bool startEngine=false;
 
 IBusBM ibus;
 TMRpcm audio; // Create an object of TMRpcm class
 TinyGPSPlus gps;  // The TinyGPS++ object
-SoftwareSerial ss(RXPin, TXPin); // The serial connection to the GPS device
 
-#define rev_L 5
-#define rev_R 6
-#define pin_L 3
-#define pin_R 9
+//static const int RXPin = 4, TXPin = 3;
+//SoftwareSerial ss(RXPin, TXPin); // The serial connection to the GPS device
+static const uint32_t GPSBaud = 9600;
+#define rev_L 6
+#define rev_R 7
+#define pin_L 9
+#define pin_R 10
+
 /*
 #define gearGND 50
 #define gearSW 52
 #define keyStartPIN 31*/
 #define startBladePIN 7
 
-static const int RXPin = 4, TXPin = 3;
-static const uint32_t GPSBaud = 9600;
-int ch_1;
-int ch_2;
-int str0,str1,str2,str3;
-bool bladeStatusON=false;
-bool startEngine=true;
-
-int readChannel(byte channelInput, int minLimit, int maxLimit, int defaultValue) {
-  uint16_t ch = ibus.readChannel(channelInput);
-  if (ch < 100) return defaultValue;
-  return map(ch, 1000, 2000, minLimit, maxLimit);
-}
-
-bool readSwitch(byte channelInput, bool defaultValue) {
-  int intDefaultValue = (defaultValue) ? 100 : 0;
-  int ch = readChannel(channelInput, 0, 100, intDefaultValue);
-  return (ch > 50);
-}
-
 void setup() {
   Serial.begin(9600);
-  ss.begin(GPSBaud);
+  //ss.begin(GPSBaud);
   ibus.begin(Serial1);
   Serial.println("Starting...");  
-
+  TCCR2B = TCCR2B & B11111000 | B00000001;
+  //InitTimersSafe();
+  
   pinMode(rev_L, OUTPUT);
   pinMode(rev_R, OUTPUT);
   pinMode(pin_L, OUTPUT);
@@ -58,8 +52,10 @@ void setup() {
   digitalWrite(rev_R,HIGH);
   digitalWrite(pin_L,HIGH);
   digitalWrite(pin_R,HIGH);
-  analogWrite(pin_L,75);
-  analogWrite(pin_R,75);
+  analogWrite(pin_L,slowest);
+  analogWrite(pin_R,slowest);
+  // pwmWrite(pin_L, 0);
+  // pwmWrite(pin_R, 0);
   //digitalWrite(keyStartPIN,HIGH);
   digitalWrite(startBladePIN,HIGH);
   //digitalWrite(gearGND,HIGH);
@@ -72,11 +68,11 @@ void setup() {
     return;   // don't do anything more if not
   }
   wavPlay("greeting.wav",true,"Crop Master RC รถบังคับเพื่องานการเกษตร สวัสดีครับ");
-  readSubVersion("0p03");
+  readSubVersion("0p05");
 }
 
 void readSubVersion(char* txt){
-  wavPlay("devvrsn.wav",true,"เดเวลอปเวอร์ชั่น");
+  wavPlay("alfaversion.wav",true,"อัลฟ่าเวอร์ชั่น");
   for(int i = 0; i < strlen(txt); i++) {
     char txtchar = txt[i];
     String filename = String(txtchar) + ".wav";
@@ -85,11 +81,11 @@ void readSubVersion(char* txt){
 }
 
 bool startOrder(){
-    str0 = readChannel(0, -60, 60, 0);
-    str1 = readChannel(1, -60, 60, 0);
-    str2 = readChannel(2, -60, 60, 0);
-    str3 = readChannel(3, -60, 60, 0);
-    if(str0<=-58 && str1<=2 && str2<=-58 && str3>=58){
+    str0 = readChannel(0, -5, 5, 0);
+    str1 = readChannel(1, -5, 5, 0);
+    str2 = readChannel(2, -5, 5, 0);
+    str3 = readChannel(3, -5, 5, 0);
+    if(str0<=-4 && str1<=2 && str2<=-4 && str3>=4){
       return true;
     }else{
       return false;
@@ -108,7 +104,7 @@ void wavPlay(char* wavfile, bool wait, char* txt){
 }
 
 void emergencyStop(){
-  startMotorControllerBox=false; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
+  //startMotorControllerBox=false; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
   //digitalWrite(keyStartPIN,HIGH);
   digitalWrite(startBladePIN,HIGH);
 
@@ -147,13 +143,13 @@ bool startSystem(){
           delay(1000);
           wavPlay("carready.wav",true,"รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง");
           Serial.println("Ready....");
-          startMotorControllerBox=true; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
+          //startMotorControllerBox=true; //เก็บไว้ยังไม่ได้ใช้ อาจจะเอาออก
           return true;  //สถานะพร้อมรับคำสั่ง อันตรายถ้าอยู่ใกล้
           //digitalWrite(keyStartPIN,LOW);
         }
       }
+      wavPlay("ccelst.wav",true,"ยกเลิกการสต๊าส");
     }
-    wavPlay("ccelst.wav",true,"ยกเลิกการสต๊าส");
   }else{
     if(readSwitch(5, false)) wavPlay("blondstr.wav",true,"สวิทช์ใบตัดเปิดค้างอยู่ ห้ามสต๊าส");
     if(readSwitch(6, false)) wavPlay("enofdstr.wav",true,"สวิทช์เครื่องปิดอยู่ ไม่สามารถสต๊าสได้");
@@ -161,8 +157,19 @@ bool startSystem(){
   return false;
 }
 
-void loop(){
+int readChannel(byte channelInput, int minLimit, int maxLimit, int defaultValue) {
+  uint16_t ch = ibus.readChannel(channelInput);
+  if (ch < 100) return defaultValue;
+  return map(ch, 1000, 2000, minLimit, maxLimit);
+}
 
+bool readSwitch(byte channelInput, bool defaultValue) {
+  int intDefaultValue = (defaultValue) ? 100 : 0;
+  int ch = readChannel(channelInput, 0, 100, intDefaultValue);
+  return (ch > 50);
+}
+
+void loop(){
   while(!startEngine){  // รอการสต๊าส
     startEngine=startSystem();
   }
@@ -213,88 +220,42 @@ void loop(){
     wavPlay("bldstop.wav",false,"ใบตัดหยุดทำงาน"); //ใบตัดหยุดทำงาน 
   }      
 
-  ch_1 = readChannel(0, -60, 60, 0);
-  ch_2 = readChannel(1, -60, 60, 0);
+  ch_1 = readChannel(0, -10, 10, 0);
+  ch_2 = readChannel(1, -10, 10, 0);
 
-  if(ch_1 >= 0 && ch_2 >= 0) Forward(ch_1,ch_2); //เดินหน้า
-  if(ch_1 < 0 && ch_1 >= -30 && ch_1*(-1) <= ch_2) LRotate(ch_1*(-1),ch_2); //หมุนซ้าย
-  if(ch_2 < 0 && ch_2 >= -30 && ch_2*(-1) <= ch_1) RRotate(ch_1,ch_2*(-1)); //หมุนขวา
+  if(ch_1 >= 0 && ch_2 >= 0) directionDriveMotor("forward",ch_1,ch_2,1,1); //เดินหน้า
+  if(ch_1 < 0 && ch_1 >= -5 && ch_1*(-1) <= ch_2) directionDriveMotor("LRotate",ch_1*(-1),ch_2,0,1); //หมุนซ้าย
+  if(ch_2 < 0 && ch_2 >= -5 && ch_2*(-1) <= ch_1) directionDriveMotor("RRotate",ch_1,ch_2*(-1),1,0); //หมุนขวา
 
-  if(ch_1 < 0 && ch_2 < 0) Backward(ch_2*(-1),ch_1*(-1)); //ถอยหลัง
-  if(ch_1 < 0 && ch_2 < 30 && ch_1*(-1) > ch_2) LBackward(ch_2,ch_1*(-1)); //ถอยหลังซ้าย  
-  if(ch_2 < 0 && ch_1 < 30 && ch_2*(-1) > ch_1) /RBackward(ch_2*(-1),ch_1); //ถอยหลังขวา 
+  if(ch_1 < 0 && ch_2 < 0) directionDriveMotor("Backward",ch_2*(-1),ch_1*(-1),0,0); //ถอยหลัง
+  if(ch_1 < 0 && ch_2 >=0 && ch_2 < 5 && ch_1*(-1) > ch_2) directionDriveMotor("LBackward",ch_2,ch_1*(-1),1,0); //ถอยหลังซ้าย  
+  if(ch_2 < 0 && ch_1 >=0 && ch_1 < 5 && ch_2*(-1) > ch_1) directionDriveMotor("RBackward",ch_2*(-1),ch_1,0,1); //ถอยหลังขวา 
     
-  if (ss.available() > 0){
-    gps.encode(ss.read());
-    if (gps.location.isUpdated()){
-      logGPS(gps);
-    }
+  // if (ss.available() > 0){
+  //   gps.encode(ss.read());
+  //   if (gps.location.isUpdated()){
+  //     logGPS(gps);
+  //   }
+  // }
+}
+
+void directionDriveMotor(char* type,int L, int R,bool FBL,bool FBR){
+  Serial.println(type);
+  if(digitalRead(rev_L)!=FBL){
+    analogWrite(pin_L,slowest);
+    digitalWrite(rev_L,FBL);
   }
-
-  delay(250);
-}
-
-void printReport(type,L,R){
-  String strReport = String(type) + " " + String(L_Value) + ":" + String(R_Value);
-  Serial.print(strReport.c_str());
-}
-
-void Foreward(L,R){
-  digitalWrite(rev_L,HIGH);
-  digitalWrite(rev_R,HIGH);
-  int L_Value = map(L,0,60,75,130);
-  int R_Value = map(R,0,60,75,130);
+  if(digitalRead(rev_R)!=FBR){
+    analogWrite(pin_R,slowest);
+    digitalWrite(rev_R,FBR);
+  }
+  int L_Value = map(L,0,100,slowest,fastest);
+  int R_Value = map(R,0,100,slowest,fastest);
   analogWrite(pin_L,L_Value);
   analogWrite(pin_R,R_Value);
-  printReport("Foreward",L_Value,R_Value);
-}
-void LRotate(L,R){
-  digitalWrite(rev_L,LOW);
-  digitalWrite(rev_R,HIGH);
-  int L_Value = map(L,0,60,75,130);
-  int R_Value = map(R,0,60,75,130);
-  analogWrite(pin_L,L_Value);
-  analogWrite(pin_R,R_Value);
-  printReport("Left Rotate",L_Value,R_Value);
-}
-void RRotate(L,R){
-  digitalWrite(rev_L,HIGH);
-  digitalWrite(rev_R,LOW);
-  int L_Value = map(L,0,60,75,130);
-  int R_Value = map(R,0,60,75,130);
-  analogWrite(pin_L,L_Value);
-  analogWrite(pin_R,R_Value);
-  printReport("Right Rotate",L_Value,R_Value);
-}
-void Backward(R,L){
-  digitalWrite(rev_L,LOW);
-  digitalWrite(rev_R,LOW);
-  int L_Value = map(L,0,60,75,130);
-  int R_Value = map(R,0,60,75,130);
-  analogWrite(pin_L,L_Value);
-  analogWrite(pin_R,R_Value);
-  printReport("Backward",L_Value,R_Value);
-}
-void LBackward(R,L){  // function ที่อาจจะต้องคำนวณแรงมอเตอร์ใหม่
-  digitalWrite(rev_L,HIGH);
-  digitalWrite(rev_R,LOW);
-  int L_Value = map(L,0,60,75,130);
-  int R_Value = map(R,0,60,75,130);
-  analogWrite(pin_L,L_Value);
-  analogWrite(pin_R,R_Value);
-  printReport("Left Backward",L_Value,R_Value);
-}
-void RBackward(R,L){  // function ที่อาจจะต้องคำนวณแรงมอเตอร์ใหม่
-  digitalWrite(rev_L,LOW);
-  digitalWrite(rev_R,HIGH);
-  int L_Value = map(L,0,60,75,130);
-  int R_Value = map(R,0,60,75,130);
-  analogWrite(pin_L,L_Value);
-  analogWrite(pin_R,R_Value);
-  printReport("Right Backward",L_Value,R_Value);
 }
 
-void logGPS(gps){
+void logGPS(TinyGPSPlus gps){
   // write to sd card;
 }
 
