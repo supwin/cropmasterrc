@@ -3,7 +3,18 @@
 #include <IBusBM.h>   
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
-//#include <PWM.h>
+
+/*
+version explaination
+0 : untest version
+1 : tested version 
+2 : alpha version
+3 : beta version
+4 : candidate version
+5 : release version
+*/
+int versionSerial="0";
+char* versionNo = "0p0600";
 
 int slowest=55;
 int fastest=100;
@@ -17,6 +28,7 @@ IBusBM ibus;
 TMRpcm audio; // Create an object of TMRpcm class
 TinyGPSPlus gps;  // The TinyGPS++ object
 
+#define pin_Amp 2
 //static const int RXPin = 4, TXPin = 3;
 //SoftwareSerial ss(RXPin, TXPin); // The serial connection to the GPS device
 static const uint32_t GPSBaud = 9600;
@@ -47,6 +59,7 @@ void setup() {
   pinMode(startBladePIN,OUTPUT);
   //pinMode(gearGND,OUTPUT);
   //pinMode(gearSW,OUTPUT);
+  pinMode(pin_Amp,OUTPUT);
 
   digitalWrite(rev_L,HIGH);
   digitalWrite(rev_R,HIGH);
@@ -60,6 +73,7 @@ void setup() {
   digitalWrite(startBladePIN,HIGH);
   //digitalWrite(gearGND,HIGH);
   //digitalWrite(gearSW,HIGH);
+  digitalWrite(pin_L,HIGH);
 
   audio.speakerPin = 46; // Set the output pin for audio  สำหรับ mega ต้องขา 46 จึงจะมีเสียง
   audio.setVolume(5);   // Set the volume to a value between 0 and 7  ต้องกำหนดที่ 5 เท่านั้นจึงจะมีเสียงอาจจะเป็นที่สเปคลำโพง
@@ -68,13 +82,45 @@ void setup() {
     return;   // don't do anything more if not
   }
   wavPlay("greeting.wav",true,"Crop Master RC รถบังคับเพื่องานการเกษตร สวัสดีครับ");
-  readSubVersion("0p05");
+  readSubVersion(versionSerial,versionNo);
 }
 
-void readSubVersion(char* txt){
-  wavPlay("alfaversion.wav",true,"อัลฟ่าเวอร์ชั่น");
-  for(int i = 0; i < strlen(txt); i++) {
-    char txtchar = txt[i];
+void readSubVersion(int versionSerial,char* versionNo){
+      // version explaination
+      // 0 : untest version
+      // 1 : tested version 
+      // 2 : alpha version
+      // 3 : beta version
+      // 4 : candidate version
+      // 5 : release version
+  
+  string vsn;
+  switch versionSerial{
+    case 0:
+      versionfilename = "untestversion.wav";
+      versiontxt = "เวอร์ชั่นยังไม่ทดสอบ";
+      break;
+    case 1:
+      versionfilename = "testedversion.wav";
+      versiontxt = "เวอร์ชั่นทดสอบแล้ว";
+      break;
+    case 2:
+      versionfilename = "alphaversion.wav";
+      versiontxt = "อัลฟ่าเวอร์ชั่น";
+      break;
+    case 3:
+      versionfilename = "";
+      break;
+    case 4:
+      versionfilename = "";
+      break;
+    case 5:
+      versionfilename = "";
+  }
+      
+  wavPlay(versionfilename,true,versiontxt);
+  for(int i = 0; i < strlen(versionNo); i++) {
+    char txtchar = versionNo[i];
     String filename = String(txtchar) + ".wav";
     wavPlay(filename.c_str(), true, &txtchar);
   }
@@ -93,6 +139,7 @@ bool startOrder(){
 }
 
 void wavPlay(char* wavfile, bool wait, char* txt){
+  digitalWrite(pin_Amp,LOW);
   audio.play(wavfile); // Play the audio file from the SD card
 
   Serial.print(txt);
@@ -100,6 +147,7 @@ void wavPlay(char* wavfile, bool wait, char* txt){
     Serial.print(".");
     delay(250);
   };// Wait for the audio to finish playing
+  digitalWrite(pin_Amp,HIGH);
   Serial.println(".");
 }
 
@@ -133,13 +181,13 @@ void cancelBladStart(){
 bool startSystem(){
   if(!readSwitch(5, false) && !readSwitch(6, false)){  //vrB ถ้าไม่เปิดใบตัดไว้(flase) หรือ swA ถ้าไม่ปิดฉุกเฉิน(flase)ไว้
     if(startOrder()){ 
-      wavPlay("3.wav",false,"3");
+      wavPlay("count3.wav",false,"3");
       delay(1000);
       if(startOrder()){
-        wavPlay("2.wav",false,"2");
+        wavPlay("count2.wav",false,"2");
         delay(1000);
         if(startOrder()){
-          wavPlay("1.wav",false,"1");
+          wavPlay("count1.wav",false,"1");
           delay(1000);
           wavPlay("carready.wav",true,"รถพร้อมทำงาน และกำลังเคลื่อนตัว กรุณาถอยออกห่าง");
           Serial.println("Ready....");
@@ -182,11 +230,11 @@ void loop(){
 
   if(readSwitch(5, false) && !bladeStatusON && !readSwitch(6,false)){  //เปิดสวิทช์ และใบตัดไม่ได้ทำงานอยู่ และ swA ต้อง true ด้วย
     wavPlay("blstrt.wav",true,"ใบตัดกำลังเริ่มทำงานใน"); 
-    wavPlay("3.wav",false,"3");
+    wavPlay("count3.wav",false,"3");
     delay(1000);
     if(!readSwitch(6, false)){
       if(readSwitch(5,false)){
-        wavPlay("2.wav",false,"2");
+        wavPlay("count2.wav",false,"2");
         delay(1000);
       }else{
         cancelBladStart();
@@ -199,7 +247,7 @@ void loop(){
     
     if(!readSwitch(6, false)){
       if(readSwitch(5,false)){
-        wavPlay("1.wav",false,"1");
+        wavPlay("count1.wav",false,"1");
         delay(1000);
       }else{
         cancelBladStart();
